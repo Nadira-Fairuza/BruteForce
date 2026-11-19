@@ -1,35 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EcoSort Bangladesh
 
-## Getting Started
+Smart AI-assisted **Reverse Vending Machine (RVM)** prototype built for cleaner streets and incentivized recycling across Bangladesh. Citizens can scan discarded items (plastic bottles, aluminum cans, paper/cardboard, or general waste), route them into color-coded sorting bins, earn virtual **BDT (৳)** rewards on an **EcoCard**, and compete on a live street cleanliness leaderboard.
 
-First, run the development server:
+## Key Features
+- **AI Trash Vision Scanner (`/kiosk`):** Uses `@tensorflow/tfjs` to classify items via webcam (supports a Teachable Machine model in `public/model/` with instant demo fallback triggers for testing).
+- **Automated Sorting Bin Simulation:** Animates internal sorting compartments with `framer-motion` and shows per-item Taka rewards.
+- **Virtual EcoCard Wallet (`/wallet`):** Issue new `ECO-XXXXXX` cards, look up balances and deposit history, and simulate **bKash**, **Nagad**, or **Mobile Recharge** redemptions.
+- **Community Leaderboard (`/leaderboard`):** Tracks top EcoCard contributors, recycled item counts, and recent kiosk scans stored in MongoDB.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech Stack
+- **Framework:** Next.js 16 (App Router), React, TypeScript
+- **Styling & Animation:** Tailwind CSS, Framer Motion, Lucide Icons
+- **AI / Vision:** TensorFlow.js (`@tensorflow/tfjs`)
+- **Database:** MongoDB with Mongoose
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Requirements to Run Locally
+1. **Node.js** (v18.18+ or v20+ recommended) and **npm**
+2. **MongoDB** — either a **MongoDB Atlas** cloud connection string or a local **MongoDB Community Server** (`mongodb://127.0.0.1:27017/ecosort_bd`)
+3. *(Optional)* A webcam for live vision scanning (the kiosk also includes one-click material test buttons)
+4. *(Optional)* Teachable Machine exported files (`model.json`, `metadata.json`, and weight shards) placed inside `public/model/`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
+## Setup & Installation
+1. Clone the repository and enter the project folder:
+   ```bash
+   git clone [https://github.com/Nadira-Fairuza/BruteForce.git](https://github.com/Nadira-Fairuza/BruteForce.git)
+   cd BruteForce
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
