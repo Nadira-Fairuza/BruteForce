@@ -219,9 +219,7 @@ export default function WebcamScanner({
         {!cameraReady && (
           <div className="flex h-full flex-col items-center justify-center p-6 text-center text-sm text-slate-400">
             <AlertCircle className="mb-2 h-7 w-7 text-amber-400" />
-            <p>
-              {cameraError ?? "Starting camera feed..."}
-            </p>
+            <p>{cameraError ?? "Starting camera feed..."}</p>
           </div>
         )}
 
@@ -237,4 +235,46 @@ export default function WebcamScanner({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleCaptureAndScan}
+          disabled={disabled || isScanning}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isScanning ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Analyzing Item...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Scan Trash Item
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Quick test triggers for hackathon demos */}
+      <div className="mt-3 border-t border-slate-800 pt-3">
+        <p className="mb-2 text-xs text-slate-400">Quick demo test triggers:</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["plastic", "metal", "paper", "general"] as TrashMaterial[]).map(
+            (item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => handleSimulateMaterial(item)}
+                disabled={disabled || isScanning}
+                className="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs font-medium capitalize text-slate-200 transition hover:border-emerald-500/60 hover:bg-slate-800 disabled:opacity-50"
+              >
+                Test {item}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
