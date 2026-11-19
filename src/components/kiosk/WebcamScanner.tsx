@@ -12,8 +12,16 @@ export interface ScanDetectionResult {
 }
 
 interface WebcamScannerProps {
-  onDetected: (result: ScanDetectionResult) => void;
+  cardId?: string;
+  kioskLocation?: string;
   disabled?: boolean;
+  onScanCompleted?: (payload: {
+    materialType: TrashMaterial;
+    rawLabel: string;
+    confidenceScore: number;
+    rewardEarnedBdt: number;
+    binName?: string;
+  }) => void;
 }
 
 interface TeachableMachineMetadata {
@@ -21,8 +29,10 @@ interface TeachableMachineMetadata {
 }
 
 export default function WebcamScanner({
-  onDetected,
+  cardId = "",
+  kioskLocation = "Dhanmondi 27, Dhaka",
   disabled = false,
+  onScanCompleted,
 }: WebcamScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -37,8 +47,8 @@ export default function WebcamScanner({
     confidence: number;
   } | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
 
-  // Load Teachable Machine model from /public/model/model.json if present
   useEffect(() => {
     let active = true;
 
@@ -60,7 +70,6 @@ export default function WebcamScanner({
           setModelLoaded(true);
         }
       } catch {
-        // Model files not placed in public/model/ yet — simulation fallback remains ready
         if (active) {
           setModelLoaded(false);
         }
@@ -78,7 +87,6 @@ export default function WebcamScanner({
     };
   }, []);
 
-  // Start webcam stream
   useEffect(() => {
     let mounted = true;
 
@@ -126,12 +134,17 @@ export default function WebcamScanner({
     }
 
     const inputShape = modelRef.current.inputs?.[0]?.shape;
-    const targetHeight = typeof inputShape?.[1] === "number" ? inputShape[1] : 224;
-    const targetWidth = typeof inputShape?.[2] === "number" ? inputShape[2] : 224;
+    const targetHeight =
+      typeof inputShape?.[1] === "number" ? inputShape[1] : 224;
+    const targetWidth =
+      typeof inputShape?.[2] === "number" ? inputShape[2] : 224;
 
     const predictions = tf.tidy(() => {
       const imgTensor = tf.browser.fromPixels(videoRef.current!);
-      const resized = tf.image.resizeBilinear(imgTensor, [targetHeight, targetWidth]);
+      const resized = tf.image.resizeBilinear(imgTensor, [
+        targetHeight,
+        targetWidth,
+      ]);
       const normalized = resized.toFloat().div(127.5).sub(1).expandDims(0);
       const output = modelRef.current!.predict(normalized) as tf.Tensor;
       return Array.from(output.dataSync());
@@ -157,37 +170,73 @@ export default function WebcamScanner({
     };
   }
 
+  async function submitScan(detection: ScanDetectionResult) {
+    setLivePreview({
+      label: detection.rawLabel,
+      confidence: detection.confidenceScore,
+    });
+    setScanStatus(null);
+
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardId: cardId.trim() || undefined,
+          kioskLocation,
+          materialType: detection.materialType,
+          confidenceScore: detection.confidenceScore,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        const reward = Number(data.rewardEarnedBdt ?? data.transaction?.rewardEarnedBdt ?? 0);
+        setScanStatus(
+          `Logged ${detection.materialType} (+৳${reward.toFixed(2)})`
+        );
+        onScanCompleted?.({
+          ...detection,
+          rewardEarnedBdt: reward,
+          binName: data.binName,
+        });
+      } else {
+        setScanStatus(data.error || "Scan recorded locally.");
+      }
+    } catch {
+      setScanStatus("Could not reach /api/scan.");
+    }
+  }
+
   async function handleCaptureAndScan() {
     if (disabled || isScanning) return;
     setIsScanning(true);
 
     try {
       const aiResult = await runInferenceFromVideo();
-      if (aiResult) {
-        setLivePreview({
-          label: aiResult.rawLabel,
-          confidence: aiResult.confidenceScore,
-        });
-        onDetected(aiResult);
-      } else {
-        // Fallback if camera or model isn't ready yet
-        handleSimulateMaterial("plastic");
-      }
+      const detection: ScanDetectionResult = aiResult ?? {
+        materialType: "plastic",
+        rawLabel: "plastic item (demo)",
+        confidenceScore: 0.94,
+      };
+      await submitScan(detection);
     } finally {
       setIsScanning(false);
     }
   }
 
-  function handleSimulateMaterial(materialType: TrashMaterial) {
+  async function handleSimulateMaterial(materialType: TrashMaterial) {
     if (disabled || isScanning) return;
-    const confidenceScore = 0.94;
-    const rawLabel = `${materialType} item (demo)`;
-    setLivePreview({ label: rawLabel, confidence: confidenceScore });
-    onDetected({
-      materialType,
-      rawLabel,
-      confidenceScore,
-    });
+    setIsScanning(true);
+    try {
+      await submitScan({
+        materialType,
+        rawLabel: `${materialType} item (demo)`,
+        confidenceScore: 0.94,
+      });
+    } finally {
+      setIsScanning(false);
+    }
   }
 
   return (
@@ -204,7 +253,9 @@ export default function WebcamScanner({
               : "bg-amber-500/20 text-amber-300"
           }`}
         >
-          {modelLoaded ? "TF.js Model Loaded" : "Demo Mode (No /model/model.json)"}
+          {modelLoaded
+            ? "TF.js Model Loaded"
+            : "Demo Mode (No /model/model.json)"}
         </span>
       </div>
 
@@ -224,7 +275,7 @@ export default function WebcamScanner({
         )}
 
         {livePreview && (
-          <div className="absolute bottom-3 left-3 rounded-lg bg-slate-950/85 px-3 py-1.5 text-xs backdrop-blur-sm">
+          <div className="absolute bottom-3 left-3 rounded-lg bg-slate-950/85 px-3 py-1.5 text-xs backdrop-blur-xs">
             <span className="font-semibold text-emerald-300">
               {livePreview.label}
             </span>{" "}
@@ -256,7 +307,10 @@ export default function WebcamScanner({
         </button>
       </div>
 
-      {/* Quick test triggers for hackathon demos */}
+      {scanStatus && (
+        <p className="mt-2 text-xs font-medium text-emerald-300">{scanStatus}</p>
+      )}
+
       <div className="mt-3 border-t border-slate-800 pt-3">
         <p className="mb-2 text-xs text-slate-400">Quick demo test triggers:</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
