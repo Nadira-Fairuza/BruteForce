@@ -1,0 +1,94 @@
+import { connectDB } from "@/lib/db";
+import User from "@/models/User";
+import Transaction from "@/models/Transaction";
+
+const SAMPLE_USERS = [
+  {
+    name: "Nusrat Jahan",
+    phone: "01711223344",
+    cardId: "ECO-100101",
+    balanceBdt: 14,
+    totalItemsRecycled: 6,
+  },
+  {
+    name: "Tanvir Ahmed",
+    phone: "01819887766",
+    cardId: "ECO-100102",
+    balanceBdt: 9,
+    totalItemsRecycled: 4,
+  },
+  {
+    name: "Mahmudul Hasan",
+    phone: "01914556677",
+    cardId: "ECO-100103",
+    balanceBdt: 5,
+    totalItemsRecycled: 2,
+  },
+  {
+    name: "Farhana Akter",
+    phone: "01677332211",
+    cardId: "ECO-100104",
+    balanceBdt: 3,
+    totalItemsRecycled: 2,
+  },
+];
+
+const SAMPLE_TRANSACTIONS = [
+  {
+    cardId: "ECO-100101",
+    kioskLocation: "Dhanmondi 27, Dhaka",
+    materialType: "plastic" as const,
+    confidenceScore: 0.96,
+    rewardEarnedBdt: 2,
+  },
+  {
+    cardId: "ECO-100101",
+    kioskLocation: "Dhanmondi 27, Dhaka",
+    materialType: "metal" as const,
+    confidenceScore: 0.93,
+    rewardEarnedBdt: 5,
+  },
+  {
+    cardId: "ECO-100102",
+    kioskLocation: "Tejgaon / AUST Area, Dhaka",
+    materialType: "plastic" as const,
+    confidenceScore: 0.91,
+    rewardEarnedBdt: 2,
+  },
+  {
+    cardId: "ECO-100103",
+    kioskLocation: "Shahbagh Crossing, Dhaka",
+    materialType: "metal" as const,
+    confidenceScore: 0.95,
+    rewardEarnedBdt: 5,
+  },
+  {
+    cardId: "ECO-100104",
+    kioskLocation: "Banani Road 11, Dhaka",
+    materialType: "paper" as const,
+    confidenceScore: 0.89,
+    rewardEarnedBdt: 1,
+  },
+];
+
+export async function seedDatabase() {
+  await connectDB();
+
+  for (const user of SAMPLE_USERS) {
+    await User.findOneAndUpdate(
+      { cardId: user.cardId },
+      { $setOnInsert: user },
+      { upsert: true, new: true }
+    );
+  }
+
+  const existingCount = await Transaction.countDocuments();
+  if (existingCount === 0) {
+    await Transaction.insertMany(SAMPLE_TRANSACTIONS);
+  }
+
+  return {
+    usersCount: SAMPLE_USERS.length,
+    seeded: true,
+  };
+}

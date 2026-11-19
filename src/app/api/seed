@@ -1,0 +1,15 @@
+import { NextResponse } from "next/server";
+import { seedDatabase } from "@/lib/seed";
+
+export async function POST() {
+  try {
+    const result = await seedDatabase();
+    return NextResponse.json({ ok: true, ...result });
+  } catch (error) {
+    console.error("POST /api/seed error:", error);
+    return NextResponse.json(
+      { ok: false, error: "Failed to seed database" },
+      { status: 500 }
+    );
+  }
+}

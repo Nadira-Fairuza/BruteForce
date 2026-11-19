@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "framer-motion": "^14.14.0",
+    "lucide-react": "^1.76.0",
+    "mongoose": "^9.12.2",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0"
