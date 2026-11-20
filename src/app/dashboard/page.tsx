@@ -98,24 +98,25 @@ export default function CitizenDashboardPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/auth/me");
+      // Protected page fails closed: if the session cannot be verified, send the
+      // user to login rather than rendering an empty shell.
       if (!res.ok) {
-        if (res.status === 401) {
-          router.push("/login");
-          return;
-        }
-        throw new Error("Failed to load dashboard data");
+        router.push("/login");
+        return;
       }
       const data = await res.json();
-      if (data.ok && data.user) {
-        setUser(data.user);
-        setEditName(data.user.name);
-        setEditPhone(data.user.phone);
-        setPayoutAccount(data.user.phone);
-        setTransactions(data.transactions || []);
-        setRedemptions(data.redemptions || []);
+      if (!data.ok || !data.user) {
+        router.push("/login");
+        return;
       }
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Network error");
+      setUser(data.user);
+      setEditName(data.user.name);
+      setEditPhone(data.user.phone);
+      setPayoutAccount(data.user.phone);
+      setTransactions(data.transactions || []);
+      setRedemptions(data.redemptions || []);
+    } catch {
+      router.push("/login");
     } finally {
       setLoading(false);
     }
@@ -235,24 +236,9 @@ export default function CitizenDashboardPage() {
   }
 
   if (!user) {
-    // Without a profile there is nothing to render, but a blank page hides the
-    // cause (expired session vs API failure) and leaves the user stuck.
-    return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="max-w-md px-6 text-center">
-          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-400" />
-          <p className="mb-4 text-sm text-slate-300">
-            {errorMsg || "Your session has expired. Please log in again."}
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
-          >
-            Back to login
-          </Link>
-        </div>
-      </main>
-    );
+    // loadDashboard redirects to /login whenever it cannot establish a session,
+    // so this is only a render guard for the moment before navigation commits.
+    return null;
   }
 
   const ecoCardProfile: EcoCardProfile = {
