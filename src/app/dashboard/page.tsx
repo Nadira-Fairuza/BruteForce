@@ -98,24 +98,25 @@ export default function CitizenDashboardPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/auth/me");
+      // Protected page fails closed: if the session cannot be verified, send the
+      // user to login rather than rendering an empty shell.
       if (!res.ok) {
-        if (res.status === 401) {
-          router.push("/login");
-          return;
-        }
-        throw new Error("Failed to load dashboard data");
+        router.push("/login");
+        return;
       }
       const data = await res.json();
-      if (data.ok && data.user) {
-        setUser(data.user);
-        setEditName(data.user.name);
-        setEditPhone(data.user.phone);
-        setPayoutAccount(data.user.phone);
-        setTransactions(data.transactions || []);
-        setRedemptions(data.redemptions || []);
+      if (!data.ok || !data.user) {
+        router.push("/login");
+        return;
       }
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Network error");
+      setUser(data.user);
+      setEditName(data.user.name);
+      setEditPhone(data.user.phone);
+      setPayoutAccount(data.user.phone);
+      setTransactions(data.transactions || []);
+      setRedemptions(data.redemptions || []);
+    } catch {
+      router.push("/login");
     } finally {
       setLoading(false);
     }
@@ -235,6 +236,8 @@ export default function CitizenDashboardPage() {
   }
 
   if (!user) {
+    // loadDashboard redirects to /login whenever it cannot establish a session,
+    // so this is only a render guard for the moment before navigation commits.
     return null;
   }
 

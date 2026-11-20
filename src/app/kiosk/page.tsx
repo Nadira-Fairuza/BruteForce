@@ -28,6 +28,7 @@ import {
   MIN_CONFIDENCE_THRESHOLD,
   REWARD_RATES_PER_KG,
 } from "@/lib/rewards";
+import { depositKey, allowManualConfirm } from "@/lib/scanFallback";
 
 export default function KioskPage() {
   const [activeCardId, setActiveCardId] = useState<string>("GUEST-DEMO");
@@ -48,6 +49,8 @@ export default function KioskPage() {
 
   const [submittingScan, setSubmittingScan] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // The detection that was just auto-deposited, so Confirm cannot pay it twice.
+  const [depositedKey, setDepositedKey] = useState<string | null>(null);
 
   const fetchUserSummary = useCallback(async (cardId: string) => {
     if (!cardId || cardId === "GUEST-DEMO") {
@@ -86,24 +89,33 @@ export default function KioskPage() {
     setConfidenceScore(result.confidenceScore);
     setRawDetectionLabel(result.rawLabel);
 
-    // Determine subtype
+    // Determine subtype. The YOLO mapping gives a specific subtype; when it
+    // does not, use the conservative fallback for the category.
     let chosenSubtype: ItemSubtype = CONSERVATIVE_FALLBACK_SUBTYPES[result.materialType] ?? "general_waste";
     if (result.subtype && result.subtype in ITEM_SUBTYPES) {
       chosenSubtype = result.subtype as ItemSubtype;
-      setIsVerified(true);
-    } else {
-      setIsVerified(false);
     }
     setActiveSubtype(chosenSubtype);
+
+    // isVerified is a human attendant's confirmation, NOT an AI subtype hit.
+    // An AI-inferred subtype must still pass /api/scan's confidence gate.
+    setIsVerified(false);
 
     // Process and submit to server
     await processDeposit({
       materialType: result.materialType,
       subtype: chosenSubtype,
       confidenceScore: result.confidenceScore,
-      isVerified: Boolean(result.subtype),
+      isVerified: false,
       rawLabel: result.rawLabel,
     });
+    setDepositedKey(
+      depositKey({
+        materialType: result.materialType,
+        subtype: chosenSubtype,
+        confidenceScore: result.confidenceScore,
+      })
+    );
   }
 
   // Submit scan and deposit with idempotency token
@@ -321,7 +333,7 @@ export default function KioskPage() {
                       type="button"
                       onClick={() => {
                         setActiveSubtype(sub.id);
-                        setIsVerified(true);
+                        setIsVerified(true); // human attendant verification
                       }}
                       className={`flex items-start justify-between rounded-xl border p-2.5 text-left text-xs transition ${
                         isSelected
@@ -357,8 +369,21 @@ export default function KioskPage() {
 
                 <button
                   type="button"
-                  disabled={submittingScan}
-                  onClick={() => processDeposit()}
+                  disabled={
+                    submittingScan ||
+                    !allowManualConfirm(
+                      depositedKey,
+                      depositKey({
+                        materialType: activeMaterial ?? "plastic",
+                        subtype: activeSubtype,
+                        confidenceScore: confidenceScore,
+                      })
+                    )
+                  }
+                  onClick={() => {
+                    setDepositedKey(null);
+                    processDeposit();
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 font-semibold text-slate-950 shadow-md shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:opacity-50"
                 >
                   <Sparkles className="h-4 w-4" />
@@ -393,7 +418,7 @@ export default function KioskPage() {
                   • <strong>Weight Estimation:</strong> Without a physical scale, our vending kiosk applies approved typical weights per item (e.g. 500ml PET = 15g, 1L PET = 25g, Aluminium Can = 15g, Notebook = 250g, Organic = 50g).
                 </p>
                 <p>
-                  • <strong>Reward Rates:</strong> Plastic ৳10/kg, Metal ৳20/kg, Paper ৳5/kg, Organic ৳2/kg, General ৳0/kg.
+                  • <strong>Reward Rates:</strong> Plastic ৳10/kg, Metal ৳20/kg, Paper ৳5/kg, Organic ৳2/kg, Glass ৳5/kg, E-Waste ৳25/kg, General ৳0/kg.
                 </p>
                 <p>
                   • <strong>EcoPoints Conversion:</strong> 1 EcoPoint = ৳0.01 poisha. 100 EcoPoints = ৳1.00 BDT. Minimum cashout threshold is 1,000 EcoPoints (৳10.00).

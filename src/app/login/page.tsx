@@ -54,12 +54,6 @@ export default function LoginPage() {
     }
   }
 
-  // Quick Demo Logins for Testing
-  function setDemoCredentials(demoEmail: string, demoPass: string) {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-  }
-
   return (
     <main className="min-h-screen bg-slate-950 text-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md px-4">
@@ -137,34 +131,6 @@ export default function LoginPage() {
               {loading ? "Authenticating..." : "Sign In to EcoLoop"}
             </button>
           </form>
-
-          {/* Quick Demo Pre-fills for Team Review */}
-          <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs">
-            <span className="font-semibold text-slate-400">Quick Testing / Pre-fill:</span>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setDemoCredentials("testusera@example.com", "password123")}
-                className="rounded-lg bg-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
-              >
-                User A (Tanvir)
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoCredentials("testuserb@example.com", "password123")}
-                className="rounded-lg bg-slate-800 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
-              >
-                User B (Sadia)
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoCredentials("admin@ecoloop.local", "admin123456")}
-                className="rounded-lg bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 text-[11px] text-emerald-300 hover:bg-emerald-900/60"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
 
           <div className="mt-6 border-t border-slate-800 pt-4 text-center text-xs text-slate-400">
             Don&apos;t have an account yet?{" "}
