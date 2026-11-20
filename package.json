@@ -10,6 +10,7 @@
     "test": "node --test --experimental-strip-types tests/ecoloop_rewards.test.mjs tests/multi_user_redemption.test.mjs tests/categories_config.test.mjs tests/glass_ewaste.test.mjs tests/yolo_mapping.test.mjs tests/reward_integrity.test.mjs tests/vision_input.test.mjs tests/scan_fallback.test.mjs"
   },
   "dependencies": {
+    "@teachablemachine/image": "^0.8.5",
     "@tensorflow/tfjs": "^4.22.0",
     "framer-motion": "^14.14.0",
     "lucide-react": "^1.76.0",
