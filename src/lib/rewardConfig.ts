@@ -15,6 +15,8 @@ export const REWARD_RATES_PER_KG: Record<MaterialCategory, number> = {
   metal: 20,   // ৳20 / kg
   paper: 5,    // ৳5 / kg
   organic: 2,  // ৳2 / kg
+  glass: 5,    // ৳5 / kg
+  ewaste: 25,  // ৳25 / kg
   general: 0,  // ৳0 / kg
 };
 
@@ -157,6 +159,28 @@ export const ITEM_SUBTYPES: Record<ItemSubtype, SubtypeWeightConfig> = {
     brandExamples: ["Banana peel", "Fruit peel", "Vegetable leftover"],
   },
 
+  // --- GLASS ---
+  glass_bottle: {
+    id: "glass_bottle",
+    category: "glass",
+    name: "Glass Bottle",
+    typicalWeightGrams: 300,
+    binName: "Cyan Bin — Glass",
+    description: "Glass bottle or jar (beverage, sauce, or cosmetic container)",
+    brandExamples: ["Coca-Cola Glass Bottle", "Jam Jar", "Sauce Bottle"],
+  },
+
+  // --- E-WASTE ---
+  ewaste_general: {
+    id: "ewaste_general",
+    category: "ewaste",
+    name: "E-Waste Item",
+    typicalWeightGrams: 120,
+    binName: "Violet Bin — E-Waste",
+    description: "Small electronic waste: charger, cable, earphones, remote, or old phone",
+    brandExamples: ["Phone Charger", "Earphones", "TV Remote", "Old Mobile Phone"],
+  },
+
   // --- GENERAL / OTHER ---
   general_waste: {
     id: "general_waste",
@@ -185,5 +209,7 @@ export const CONSERVATIVE_FALLBACK_SUBTYPES: Record<MaterialCategory, ItemSubtyp
   metal: "foil_container",        // 10 g (lowest metal)
   paper: "paper_cup",             // 10 g (conservative paper)
   organic: "organic_waste",       // 50 g
+  glass: "glass_bottle",          // 300 g
+  ewaste: "ewaste_general",       // 120 g
   general: "general_waste",       // 0 g
 };

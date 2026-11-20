@@ -2,7 +2,14 @@
  * EcoLoop Reward and Weight Estimation Type Definitions
  */
 
-export type MaterialCategory = "plastic" | "metal" | "paper" | "organic" | "general";
+export type MaterialCategory =
+  | "plastic"
+  | "metal"
+  | "paper"
+  | "organic"
+  | "glass"
+  | "ewaste"
+  | "general";
 
 // Item Subtypes with typical estimated weights
 export type PlasticSubtype =
@@ -24,6 +31,10 @@ export type PaperSubtype =
 
 export type OrganicSubtype = "organic_waste";
 
+export type GlassSubtype = "glass_bottle";
+
+export type EwasteSubtype = "ewaste_general";
+
 export type GeneralSubtype = "general_waste" | "empty_background";
 
 export type ItemSubtype =
@@ -31,6 +42,8 @@ export type ItemSubtype =
   | MetalSubtype
   | PaperSubtype
   | OrganicSubtype
+  | GlassSubtype
+  | EwasteSubtype
   | GeneralSubtype;
 
 export interface SubtypeWeightConfig {

@@ -3,41 +3,41 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import { Camera, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
-import { normalizeMaterial, TrashMaterial } from "@/lib/rewards";
+import { normalizeMaterial, type TrashMaterial } from "@/lib/rewards";
+import {
+  resolveScanDetection,
+  type ScanDetectionResult,
+  type VisionOutcome,
+} from "@/lib/scanFallback";
+
+export type { ScanDetectionResult } from "@/lib/scanFallback";
 
 const MODEL_BASE_URL =
   "https://teachablemachine.withgoogle.com/models/qIXgnu5EB";
 
-export interface ScanDetectionResult {
-  materialType: TrashMaterial;
-  subtype?: string;
-  rawLabel: string;
-  confidenceScore: number;
-}
-
 interface WebcamScannerProps {
-  cardId?: string;
-  kioskLocation?: string;
   disabled?: boolean;
-  onDetected?: (result: ScanDetectionResult) => Promise<void> |void;
-  onScanCompleted?: (payload: {
-    materialType: TrashMaterial;
-    rawLabel: string;
-    confidenceScore: number;
-    rewardEarnedBdt: number;
-    binName?: string;
-  }) => void;
+  onDetected?: (result: ScanDetectionResult) => void;
 }
 
 interface TeachableMachineMetadata {
   labels?: string[];
 }
 
+interface VisionResponse {
+  ok: boolean;
+  reason?: string;
+  material?: string | null;
+  category?: TrashMaterial;
+  subtype?: string;
+  recyclable?: boolean;
+  eligibleForReward?: boolean;
+  confidence?: number;
+}
+
 export default function WebcamScanner({
-  cardId = "",
-  kioskLocation = "Dhanmondi 27, Dhaka",
   disabled = false,
-  onScanCompleted,
+  onDetected,
 }: WebcamScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -185,44 +185,80 @@ export default function WebcamScanner({
     };
   }
 
-  async function submitScan(detection: ScanDetectionResult) {
+  function report(detection: ScanDetectionResult) {
     setLivePreview({
       label: detection.rawLabel,
       confidence: detection.confidenceScore,
     });
     setScanStatus(null);
+    onDetected?.(detection);
+  }
 
+  function reportReason(message: string) {
+    setScanStatus(message);
+  }
+
+  // Primary path: send the frame to the YOLO /classify service via /api/vision.
+  // "unavailable" means fall back; "stop" means the service answered and the
+  // frame must not be paid.
+  async function detectWithVision(): Promise<VisionOutcome> {
+    if (!videoRef.current || !cameraReady) return { status: "unavailable" };
+
+    const frame = document.createElement("canvas");
+    frame.width = videoRef.current.videoWidth || 640;
+    frame.height = videoRef.current.videoHeight || 480;
+    const ctx = frame.getContext("2d");
+    if (!ctx) return { status: "unavailable" };
+    ctx.drawImage(videoRef.current, 0, 0, frame.width, frame.height);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      frame.toBlob(resolve, "image/jpeg", 0.9)
+    );
+    if (!blob) return { status: "unavailable" };
+
+    let res: Response;
     try {
-      const res = await fetch("/api/scan", {
+      res = await fetch("/api/vision", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cardId: cardId.trim() || undefined,
-          kioskLocation,
-          materialType: detection.materialType,
-          confidenceScore: detection.confidenceScore,
-        }),
+        body: blob,
       });
-
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        const reward = Number(
-          data.rewardEarnedBdt ?? data.transaction?.rewardEarnedBdt ?? 0
-        );
-        setScanStatus(
-          `Logged ${detection.materialType} (+৳${reward.toFixed(2)})`
-        );
-        onScanCompleted?.({
-          ...detection,
-          rewardEarnedBdt: reward,
-          binName: data.binName,
-        });
-      } else {
-        setScanStatus(data.error || "Scan recorded locally.");
-      }
     } catch {
-      setScanStatus("Could not reach /api/scan.");
+      return { status: "unavailable" }; // network failure -> TF.js fallback
     }
+
+    let data: VisionResponse;
+    try {
+      data = (await res.json()) as VisionResponse;
+    } catch {
+      return { status: "unavailable" }; // non-JSON error page -> treat as down
+    }
+
+    if (res.status === 503 || data.reason === "vision_unavailable") {
+      return { status: "unavailable" };
+    }
+
+    if (!data.ok) {
+      return { status: "stop", message: "Unknown material class. Try another item." };
+    }
+
+    // Nothing in the frame: surface it, do not record a junk transaction.
+    if (!data.material) {
+      return {
+        status: "stop",
+        message: "No item detected. Place an item in the chute and scan again.",
+      };
+    }
+
+    return {
+      status: "detected",
+      detection: {
+        materialType: data.category ?? "general",
+        rawLabel: data.material,
+        confidenceScore: data.confidence ?? 0,
+        subtype: data.subtype,
+        reason: data.reason,
+      },
+    };
   }
 
   async function handleCaptureAndScan() {
@@ -230,13 +266,16 @@ export default function WebcamScanner({
     setIsScanning(true);
 
     try {
-      const aiResult = await runInferenceFromVideo();
-      const detection: ScanDetectionResult = aiResult ?? {
-        materialType: "plastic",
-        rawLabel: "plastic item (demo)",
-        confidenceScore: 0.94,
-      };
-      await submitScan(detection);
+      const outcome = resolveScanDetection(
+        await detectWithVision(),
+        await runInferenceFromVideo()
+      );
+
+      if ("message" in outcome) {
+        reportReason(outcome.message);
+        return;
+      }
+      report(outcome.detection);
     } finally {
       setIsScanning(false);
     }
@@ -246,7 +285,7 @@ export default function WebcamScanner({
     if (disabled || isScanning) return;
     setIsScanning(true);
     try {
-      await submitScan({
+      report({
         materialType,
         rawLabel: `${materialType} item (demo)`,
         confidenceScore: 0.94,
@@ -323,13 +362,13 @@ export default function WebcamScanner({
       </div>
 
       {scanStatus && (
-        <p className="mt-2 text-xs font-medium text-emerald-300">{scanStatus}</p>
+        <p className="mt-2 text-xs font-medium text-amber-300">{scanStatus}</p>
       )}
 
       <div className="mt-3 border-t border-slate-800 pt-3">
         <p className="mb-2 text-xs text-slate-400">Quick demo test triggers:</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(["plastic", "metal", "paper", "general"] as TrashMaterial[]).map(
+          {(["plastic", "metal", "paper", "glass", "ewaste", "general"] as TrashMaterial[]).map(
             (item) => (
               <button
                 key={item}

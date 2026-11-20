@@ -53,20 +53,26 @@ export function estimateItemWeight(
     };
   }
 
-  // 2. Explicit Subtype (e.g. from user verification or UI selection)
+  // 2. Explicit Subtype (e.g. from AI classification or UI selection).
+  // A subtype that belongs to a different category than the one being
+  // deposited is a mismatched request, not a weight to trust.
   if (explicitSubtype && explicitSubtype in ITEM_SUBTYPES) {
     const config = ITEM_SUBTYPES[explicitSubtype as ItemSubtype];
-    return {
-      category: config.category,
-      subtype: config.id,
-      subtypeName: config.name,
-      estimatedWeightGrams: config.typicalWeightGrams,
-      confidenceScore,
-      isEstimate,
-      verificationStatus: "user_verified",
-      requiresSelection: false,
-      isEmpty: false,
-    };
+    if (!categoryHint || config.category === categoryHint) {
+      return {
+        category: config.category,
+        subtype: config.id,
+        subtypeName: config.name,
+        estimatedWeightGrams: config.typicalWeightGrams,
+        confidenceScore,
+        isEstimate,
+        // Not "user_verified": this branch is reached from AI labels too, and
+        // calculateEcoLoopReward overrides it when a human confirmed.
+        verificationStatus: "ai_inferred",
+        requiresSelection: false,
+        isEmpty: false,
+      };
+    }
   }
 
   const cleaned = (rawLabel ?? "").trim().toLowerCase();
@@ -121,8 +127,8 @@ export function estimateItemWeight(
       };
     }
 
-    // Plastic cups
-    if (cleaned.includes("cup") || cleaned.includes("glass")) {
+    // Plastic cups ("glass" alone is glass, handled by the category branch)
+    if (cleaned.includes("cup")) {
       const cfg = ITEM_SUBTYPES.plastic_cup;
       return {
         category: "plastic",
@@ -284,6 +290,38 @@ export function estimateItemWeight(
     return {
       category: "organic",
       subtype: "organic_waste",
+      subtypeName: cfg.name,
+      estimatedWeightGrams: cfg.typicalWeightGrams,
+      confidenceScore,
+      isEstimate,
+      verificationStatus: "ai_inferred",
+      requiresSelection: false,
+      isEmpty: false,
+    };
+  }
+
+  // --- GLASS SUBTYPES ---
+  if (category === "glass") {
+    const cfg = ITEM_SUBTYPES.glass_bottle;
+    return {
+      category: "glass",
+      subtype: "glass_bottle",
+      subtypeName: cfg.name,
+      estimatedWeightGrams: cfg.typicalWeightGrams,
+      confidenceScore,
+      isEstimate,
+      verificationStatus: "ai_inferred",
+      requiresSelection: false,
+      isEmpty: false,
+    };
+  }
+
+  // --- E-WASTE SUBTYPES ---
+  if (category === "ewaste") {
+    const cfg = ITEM_SUBTYPES.ewaste_general;
+    return {
+      category: "ewaste",
+      subtype: "ewaste_general",
       subtypeName: cfg.name,
       estimatedWeightGrams: cfg.typicalWeightGrams,
       confidenceScore,

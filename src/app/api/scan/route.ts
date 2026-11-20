@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const rawConfidence =
       typeof body.confidenceScore === "number" && Number.isFinite(body.confidenceScore)
         ? body.confidenceScore
-        : 0.9;
+        : 0;
 
     // 2. Server-side reward calculation & fraud validation
     // NEVER trust a reward amount sent from the browser!

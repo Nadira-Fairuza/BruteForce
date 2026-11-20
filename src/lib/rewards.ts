@@ -21,8 +21,14 @@ import {
 import { calculateEcoLoopReward, calculateEcoPoints } from "./rewardCalculator.ts";
 import { normalizeMaterialCategory, isEmptyBackground } from "./materialNormalizer.ts";
 
-// Legacy broad categories compatible with existing TF.js model
-export type TrashMaterial = "plastic" | "metal" | "paper" | "organic" | "general";
+export type TrashMaterial =
+  | "plastic"
+  | "metal"
+  | "paper"
+  | "organic"
+  | "glass"
+  | "ewaste"
+  | "general";
 
 export interface MaterialRule {
   material: TrashMaterial;
@@ -69,6 +75,22 @@ export const MATERIAL_RULES: Record<TrashMaterial, MaterialRule> = {
     rewardBdt: REWARD_RATES_PER_KG.organic,
     rewardRatePerKg: REWARD_RATES_PER_KG.organic, // ৳2 / kg
     ratePerKgText: "৳2/kg",
+  },
+  glass: {
+    material: "glass",
+    label: "Glass (Bottles / Jars)",
+    binName: "Cyan Bin — Glass",
+    rewardBdt: REWARD_RATES_PER_KG.glass,
+    rewardRatePerKg: REWARD_RATES_PER_KG.glass, // ৳5 / kg
+    ratePerKgText: "৳5/kg",
+  },
+  ewaste: {
+    material: "ewaste",
+    label: "E-Waste (Chargers / Cables / Remotes)",
+    binName: "Violet Bin — E-Waste",
+    rewardBdt: REWARD_RATES_PER_KG.ewaste,
+    rewardRatePerKg: REWARD_RATES_PER_KG.ewaste, // ৳25 / kg
+    ratePerKgText: "৳25/kg",
   },
   general: {
     material: "general",
