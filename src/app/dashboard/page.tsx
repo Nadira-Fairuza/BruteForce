@@ -235,7 +235,24 @@ export default function CitizenDashboardPage() {
   }
 
   if (!user) {
-    return null;
+    // Without a profile there is nothing to render, but a blank page hides the
+    // cause (expired session vs API failure) and leaves the user stuck.
+    return (
+      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="max-w-md px-6 text-center">
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-amber-400" />
+          <p className="mb-4 text-sm text-slate-300">
+            {errorMsg || "Your session has expired. Please log in again."}
+          </p>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+          >
+            Back to login
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   const ecoCardProfile: EcoCardProfile = {

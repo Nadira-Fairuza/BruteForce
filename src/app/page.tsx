@@ -264,6 +264,14 @@ export default function HomePage() {
                   <span>Organic (Peels, Vegetable Waste)</span>
                   <strong className="font-mono text-white">৳2 / kg</strong>
                 </div>
+                <div className="flex items-center justify-between rounded-xl border border-cyan-500/30 bg-cyan-950/20 px-3.5 py-2.5 text-cyan-200">
+                  <span>Glass (Bottles, Jars)</span>
+                  <strong className="font-mono text-white">৳5 / kg</strong>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-950/20 px-3.5 py-2.5 text-violet-200">
+                  <span>E-Waste (Phones, Cables, Batteries)</span>
+                  <strong className="font-mono text-white">৳25 / kg</strong>
+                </div>
                 <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2.5 text-slate-400">
                   <span>General / Non-Recyclable Waste</span>
                   <strong className="font-mono text-slate-400">৳0 / kg</strong>
