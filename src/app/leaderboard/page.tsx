@@ -5,8 +5,6 @@ import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
 
-export const dynamic = "force-dynamic";
-
 interface LeaderboardUser {
   _id: string;
   name: string;
@@ -21,6 +19,8 @@ interface RecentScan {
   kioskLocation: string;
   materialType: string;
   rewardEarnedBdt: number;
+  weightKg?: number;
+  subtypeLabel?: string;
 }
 
 export default async function LeaderboardPage() {
@@ -55,6 +55,8 @@ export default async function LeaderboardPage() {
       kioskLocation: String(t.kioskLocation),
       materialType: String(t.materialType),
       rewardEarnedBdt: Number(t.rewardEarnedBdt ?? 0),
+      weightKg: typeof t.weightKg === "number" ? t.weightKg : undefined,
+      subtypeLabel: typeof t.subtypeLabel === "string" ? t.subtypeLabel : undefined,
     }));
   } catch {
     dbConnected = false;
@@ -89,7 +91,7 @@ export default async function LeaderboardPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/kiosk"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400"
             >
               <ScanLine className="h-4 w-4" />
               Scan Trash
@@ -222,8 +224,9 @@ export default async function LeaderboardPage() {
                     className="flex items-center justify-between py-2.5 text-xs"
                   >
                     <div>
-                      <p className="font-semibold capitalize text-slate-100">
-                        {scan.materialType} •{" "}
+                      <p className="font-semibold text-slate-100">
+                        {scan.weightKg ? `${scan.weightKg.toFixed(2)} kg ` : ""}
+                        {scan.subtypeLabel ?? `${scan.materialType.toUpperCase()}`} •{" "}
                         <span className="font-mono text-slate-400">
                           {scan.cardId}
                         </span>

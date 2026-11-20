@@ -2,15 +2,16 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Recycle, Coins, CheckCircle2 } from "lucide-react";
+import { Recycle, Coins, CheckCircle2, Apple } from "lucide-react";
 import { MATERIAL_RULES, TrashMaterial } from "@/lib/rewards";
 
 interface VirtualBinsProps {
   activeMaterial: TrashMaterial | null;
   lastRewardBdt?: number | null;
+  lastEcoPoints?: number | null;
 }
 
-const BIN_ORDER: TrashMaterial[] = ["plastic", "metal", "paper", "general"];
+const BIN_ORDER: TrashMaterial[] = ["plastic", "metal", "paper", "organic", "general"];
 
 const BIN_ACCENTS: Record<
   TrashMaterial,
@@ -31,6 +32,11 @@ const BIN_ACCENTS: Record<
     badge: "bg-emerald-500/20 text-emerald-300",
     glow: "ring-2 ring-emerald-400 bg-emerald-950/40",
   },
+  organic: {
+    border: "border-orange-500/60",
+    badge: "bg-orange-500/20 text-orange-300",
+    glow: "ring-2 ring-orange-400 bg-orange-950/40",
+  },
   general: {
     border: "border-slate-600/60",
     badge: "bg-slate-700/60 text-slate-300",
@@ -41,22 +47,29 @@ const BIN_ACCENTS: Record<
 export default function VirtualBins({
   activeMaterial,
   lastRewardBdt = null,
+  lastEcoPoints = null,
 }: VirtualBinsProps) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 text-white shadow-lg">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Recycle className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-base font-semibold">Internal Sorting Bins</h2>
+          <div>
+            <h2 className="text-base font-semibold">Automatic Sorting Chutes</h2>
+            <p className="text-[11px] text-slate-400">
+              5-Stream Automated Waste Routing
+            </p>
+          </div>
         </div>
-        {typeof lastRewardBdt === "number" && activeMaterial && (
+
+        {typeof lastEcoPoints === "number" && activeMaterial && (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-300">
-            <Coins className="h-3.5 w-3.5" />+৳{lastRewardBdt} Credited
+            <Coins className="h-3.5 w-3.5" />+{lastEcoPoints} EcoPoints (৳{lastRewardBdt?.toFixed(2)})
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {BIN_ORDER.map((material) => {
           const rule = MATERIAL_RULES[material];
           const accent = BIN_ACCENTS[material];
@@ -67,11 +80,11 @@ export default function VirtualBins({
               key={material}
               animate={
                 isActive
-                  ? { scale: 1.03, y: -3 }
+                  ? { scale: 1.03, y: -2 }
                   : { scale: 1, y: 0 }
               }
               transition={{ type: "spring", stiffness: 360, damping: 22 }}
-              className={`relative rounded-xl border p-3.5 transition-colors ${
+              className={`relative rounded-xl border p-3 transition-colors ${
                 accent.border
               } ${isActive ? accent.glow : "bg-slate-950/60"}`}
             >
@@ -79,30 +92,30 @@ export default function VirtualBins({
               <motion.div
                 animate={isActive ? { rotateX: 55 } : { rotateX: 0 }}
                 transition={{ duration: 0.3 }}
-                className="mb-2.5 h-2 w-full origin-top rounded-full bg-slate-700"
+                className="mb-2 h-1.5 w-full origin-top rounded-full bg-slate-700"
               />
 
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-1.5">
                 <div>
                   <span
-                    className={`inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold ${accent.badge}`}
+                    className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold ${accent.badge}`}
                   >
                     {rule.binName}
                   </span>
-                  <p className="mt-1.5 text-sm font-medium text-slate-100">
+                  <p className="mt-1 text-xs font-medium text-slate-100">
                     {rule.label}
                   </p>
                 </div>
 
                 {isActive && (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
                 )}
               </div>
 
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                <span>Reward per item</span>
+              <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Reward Rate</span>
                 <span className="font-semibold text-emerald-400">
-                  {rule.rewardBdt > 0 ? `৳${rule.rewardBdt}.00` : "No reward"}
+                  {rule.ratePerKgText}
                 </span>
               </div>
             </motion.div>

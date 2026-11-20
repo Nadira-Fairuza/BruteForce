@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test --experimental-strip-types tests/ecoloop_rewards.test.mjs tests/multi_user_redemption.test.mjs"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",

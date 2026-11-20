@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Leaf, QrCode, Copy, Check, Recycle, ShieldCheck } from "lucide-react";
+import { Leaf, QrCode, Copy, Check, Recycle, ShieldCheck, Coins } from "lucide-react";
 
 export interface EcoCardProfile {
   name: string;
   phone: string;
   cardId: string;
   balanceBdt: number;
+  ecoPoints?: number;
   totalItemsRecycled: number;
 }
 
@@ -17,6 +18,7 @@ interface EcoCardVisualProps {
 
 export default function EcoCardVisual({ profile }: EcoCardVisualProps) {
   const [copied, setCopied] = useState(false);
+  const ecoPoints = profile.ecoPoints ?? Math.round(profile.balanceBdt * 100);
 
   async function handleCopyId() {
     try {
@@ -40,11 +42,11 @@ export default function EcoCardVisual({ profile }: EcoCardVisualProps) {
           <div className="flex items-center gap-2 text-emerald-300">
             <Leaf className="h-5 w-5" />
             <span className="text-xs font-bold uppercase tracking-widest">
-              EcoSort Bangladesh
+              EcoLoop Bangladesh
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-300">
-            Smart Street Recycling Pass
+            Citizen Reverse Vending & EcoPoints Pass
           </p>
         </div>
 
@@ -56,13 +58,17 @@ export default function EcoCardVisual({ profile }: EcoCardVisualProps) {
       {/* Balance Display */}
       <div className="relative mt-7">
         <p className="text-xs uppercase tracking-wider text-emerald-200/80">
-          Available Reward Balance
+          Available EcoPoints & Balance
         </p>
-        <div className="mt-1 flex items-baseline gap-2">
+        <div className="mt-1 flex flex-wrap items-baseline gap-2.5">
           <span className="text-4xl font-extrabold tracking-tight text-white">
             ৳{profile.balanceBdt.toFixed(2)}
           </span>
-          <span className="text-xs font-medium text-emerald-300">BDT</span>
+          <span className="text-xs font-semibold text-emerald-300">BDT</span>
+          <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/30">
+            <Coins className="mr-1 inline h-3.5 w-3.5" />
+            {ecoPoints.toLocaleString()} Pts
+          </span>
         </div>
       </div>
 
@@ -98,7 +104,7 @@ export default function EcoCardVisual({ profile }: EcoCardVisualProps) {
             </span>
             <span className="inline-flex items-center gap-1 text-emerald-300">
               <ShieldCheck className="h-3.5 w-3.5" />
-              NFC Ready
+              Verified Citizen
             </span>
           </div>
         </div>

@@ -8,24 +8,19 @@ import {
   PlusCircle,
   Search,
   Smartphone,
-  History,
   CheckCircle2,
   ScanLine,
+  User,
+  LogIn,
 } from "lucide-react";
 import EcoCardVisual, { EcoCardProfile } from "@/components/wallet/EcoCardVisual";
-
-interface WalletTransaction {
-  _id: string;
-  kioskLocation: string;
-  materialType: string;
-  confidenceScore: number;
-  rewardEarnedBdt: number;
-  createdAt: string;
-}
+import RewardWallet from "@/components/rewards/RewardWallet";
+import RewardHistory, { TransactionHistoryItem } from "@/components/rewards/RewardHistory";
+import { MIN_REDEMPTION_BDT, MIN_REDEMPTION_ECO_POINTS } from "@/lib/rewardConfig";
 
 export default function WalletPage() {
   const [profile, setProfile] = useState<EcoCardProfile | null>(null);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionHistoryItem[]>([]);
   const [savedCards, setSavedCards] = useState<EcoCardProfile[]>([]);
 
   // Lookup state
@@ -139,13 +134,13 @@ export default function WalletPage() {
 
   function handleSimulateCashout() {
     if (!profile) return;
-    if (profile.balanceBdt < 10) {
-      setErrorMsg("Minimum ৳10.00 balance required to redeem via " + payoutMethod + ".");
+    if (profile.balanceBdt < MIN_REDEMPTION_BDT) {
+      setErrorMsg(`Minimum ${MIN_REDEMPTION_ECO_POINTS.toLocaleString()} EcoPoints (৳${MIN_REDEMPTION_BDT.toFixed(2)}) required to redeem via ${payoutMethod}.`);
       return;
     }
     setErrorMsg(null);
     setPayoutNotice(
-      `Demo Payout Requested: ৳${profile.balanceBdt.toFixed(2)} queued to ${payoutMethod} (${profile.phone})!`
+      `Demo Cashout Queued: ${Math.round(profile.balanceBdt * 100).toLocaleString()} EcoPoints (৳${profile.balanceBdt.toFixed(2)}) sent to ${payoutMethod} (${profile.phone})!`
     );
   }
 
@@ -164,21 +159,37 @@ export default function WalletPage() {
             </Link>
             <div>
               <h1 className="text-lg font-bold tracking-tight text-emerald-400">
-                EcoCard Digital Wallet
+                EcoLoop Citizen Wallet
               </h1>
               <p className="text-xs text-slate-400">
-                Track street recycling rewards & redeem in BDT
+                Track EcoPoints, typical weight deposits & cashout in BDT
               </p>
             </div>
           </div>
 
-          <Link
-            href="/kiosk"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400"
-          >
-            <ScanLine className="h-4 w-4" />
-            Open RVM Kiosk
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-900/50"
+            >
+              <User className="h-4 w-4" />
+              Citizen Dashboard
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
+            >
+              <LogIn className="h-4 w-4" />
+              Log In
+            </Link>
+            <Link
+              href="/kiosk"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400"
+            >
+              <ScanLine className="h-4 w-4" />
+              Open RVM Kiosk
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -297,22 +308,32 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {/* Right Column: Visual EcoCard, Cash-out & History */}
+          {/* Right Column: Visual EcoCard, Points Wallet, Cash-out & History */}
           <div className="space-y-6 lg:col-span-7">
             {profile ? (
               <>
+                {/* EcoCard Visual Pass */}
                 <EcoCardVisual profile={profile} />
 
-                {/* Simulated MFS Redemption */}
+                {/* EcoPoints Wallet & Milestone Progress */}
+                <RewardWallet
+                  cardId={profile.cardId}
+                  name={profile.name}
+                  balanceBdt={profile.balanceBdt}
+                  totalSubmissions={profile.totalItemsRecycled}
+                  latestPointsEarned={transactions[0]?.ecoPointsEarned}
+                />
+
+                {/* Simulated MFS Cashout */}
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Smartphone className="h-4 w-4 text-emerald-400" />
                       <h3 className="text-sm font-semibold">
-                        Redeem Rewards (Bangladesh MFS Simulation)
+                        Redeem EcoPoints (Bangladesh MFS Simulation)
                       </h3>
                     </div>
-                    <span className="text-xs text-slate-400">Min. ৳10.00</span>
+                    <span className="text-xs text-slate-400">Min. {MIN_REDEMPTION_ECO_POINTS.toLocaleString()} Pts (৳{MIN_REDEMPTION_BDT.toFixed(2)})</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5">
@@ -338,60 +359,18 @@ export default function WalletPage() {
                       onClick={handleSimulateCashout}
                       className="ml-auto rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400"
                     >
-                      Withdraw ৳{profile.balanceBdt.toFixed(2)}
+                      Cash Out ৳{profile.balanceBdt.toFixed(2)} ({Math.round(profile.balanceBdt * 100).toLocaleString()} Pts)
                     </button>
                   </div>
                 </div>
 
-                {/* Recent Scan Activity */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5">
-                  <div className="mb-3 flex items-center gap-2">
-                    <History className="h-4 w-4 text-emerald-400" />
-                    <h3 className="text-sm font-semibold">Recent Kiosk Deposits</h3>
-                  </div>
-
-                  {transactions.length === 0 ? (
-                    <p className="text-xs text-slate-400">
-                      No deposits logged yet. Copy your Card ID{" "}
-                      <span className="font-mono text-emerald-300">
-                        {profile.cardId}
-                      </span>{" "}
-                      and scan an item on the Kiosk page!
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-slate-800">
-                      {transactions.map((tx) => (
-                        <div
-                          key={tx._id}
-                          className="flex items-center justify-between py-2.5 text-xs"
-                        >
-                          <div>
-                            <p className="font-semibold capitalize text-slate-100">
-                              {tx.materialType} Waste
-                            </p>
-                            <p className="text-slate-400">{tx.kioskLocation}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-emerald-400">
-                              +৳{tx.rewardEarnedBdt.toFixed(2)}
-                            </p>
-                            <p className="text-slate-500">
-                              {new Date(tx.createdAt).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* Structured Deposit History */}
+                <RewardHistory transactions={transactions} />
               </>
             ) : (
               <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-6 text-center text-sm text-slate-400">
                 <CreditCard className="mb-2 h-8 w-8 text-slate-600" />
-                <p>Issue a new EcoCard on the left or load an existing Card ID to view your wallet.</p>
+                <p>Issue a new EcoCard on the left or load an existing Card ID to view your EcoPoints wallet.</p>
               </div>
             )}
           </div>
