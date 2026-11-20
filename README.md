@@ -3,15 +3,15 @@
 Smart AI-assisted **Reverse Vending Machine (RVM)** prototype built for cleaner streets and incentivized recycling across Bangladesh. Citizens can scan discarded items (plastic bottles, aluminum cans, paper/cardboard, or general waste), route them into color-coded sorting bins, earn virtual **BDT (৳)** rewards on an **EcoCard**, and compete on a live street cleanliness leaderboard.
 
 ## Key Features
-- **AI Trash Vision Scanner (`/kiosk`):** Uses `@tensorflow/tfjs` to classify items via webcam (supports a Teachable Machine model in `public/model/` with instant demo fallback triggers for testing).
-- **Automated Sorting Bin Simulation:** Animates internal sorting compartments with `framer-motion` and shows per-item Taka rewards.
+- **AI Trash Vision Scanner (`/kiosk`):** Classifies items from a webcam frame. Primary path posts the frame to `/api/vision`, which calls the YOLO `/classify` service (6 classes: `plastic_bottle`, `aluminum_can`, `glass`, `paper_cardboard`, `e_waste`, `non_recyclable`) and maps the result to an app material category. Falls back to the in-browser `@tensorflow/tfjs` Teachable Machine model, then to a demo value, when the service is down.
+- **Automated Sorting Bin Simulation:** 7-stream animated routing (plastic, metal, paper, organic, glass, e-waste, general) with `framer-motion` and per-item Taka rewards.
 - **Virtual EcoCard Wallet (`/wallet`):** Issue new `ECO-XXXXXX` cards, look up balances and deposit history, and simulate **bKash**, **Nagad**, or **Mobile Recharge** redemptions.
 - **Community Leaderboard (`/leaderboard`):** Tracks top EcoCard contributors, recycled item counts, and recent kiosk scans stored in MongoDB.
 
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router), React, TypeScript
 - **Styling & Animation:** Tailwind CSS, Framer Motion, Lucide Icons
-- **AI / Vision:** TensorFlow.js (`@tensorflow/tfjs`)
+- **AI / Vision:** YOLO detector served by FastAPI (`VISION_API_URL`, default `http://127.0.0.1:8000`), bridged to the app by `/api/vision`; TensorFlow.js kept as the offline fallback
 - **Database:** MongoDB with Mongoose
 
 ## Requirements to Run Locally
@@ -19,6 +19,7 @@ Smart AI-assisted **Reverse Vending Machine (RVM)** prototype built for cleaner 
 2. **MongoDB** — either a **MongoDB Atlas** cloud connection string or a local **MongoDB Community Server** (`mongodb://127.0.0.1:27017/ecosort_bd`)
 3. *(Optional)* A webcam for live vision scanning (the kiosk also includes one-click material test buttons)
 4. *(Optional)* Teachable Machine exported files (`model.json`, `metadata.json`, and weight shards) placed inside `public/model/`
+5. *(Optional)* The YOLO `/classify` service. Set `VISION_API_URL` (default `http://127.0.0.1:8000`) and `VISION_TIMEOUT_MS` (default `5000`). Without it the kiosk uses the TF.js fallback.
 
 ## Setup & Installation
 1. Clone the repository and enter the project folder:

@@ -1,6 +1,13 @@
 import mongoose, { Schema, Model, Document } from "mongoose";
 
-export type TrashMaterial = "plastic" | "metal" | "paper" | "organic" | "general";
+export type TrashMaterial =
+  | "plastic"
+  | "metal"
+  | "paper"
+  | "organic"
+  | "glass"
+  | "ewaste"
+  | "general";
 
 export interface ITransaction extends Document {
   userId?: mongoose.Types.ObjectId;
@@ -45,7 +52,7 @@ const TransactionSchema = new Schema<ITransaction>(
     },
     materialType: {
       type: String,
-      enum: ["plastic", "metal", "paper", "organic", "general"],
+      enum: ["plastic", "metal", "paper", "organic", "glass", "ewaste", "general"],
       required: true,
     },
     confidenceScore: {

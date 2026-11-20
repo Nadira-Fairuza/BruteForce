@@ -55,6 +55,17 @@ export function normalizeMaterialCategory(raw: string): MaterialCategory {
   }
 
   // Exact Teachable Machine classes & keywords
+  // Glass MUST be checked before plastic: a "glass bottle" label would
+  // otherwise match the plastic "bottle" keyword and be paid as plastic.
+  if (
+    cleaned === "glass" ||
+    cleaned.includes("glass") ||
+    cleaned.includes("jar") ||
+    cleaned.includes("bottle glass")
+  ) {
+    return "glass";
+  }
+
   if (
     cleaned === "plastic" ||
     cleaned.includes("plastic") ||
@@ -64,6 +75,16 @@ export function normalizeMaterialCategory(raw: string): MaterialCategory {
     cleaned.includes("hdpe")
   ) {
     return "plastic";
+  }
+
+  if (
+    cleaned.includes("e_waste") ||
+    cleaned.includes("ewaste") ||
+    cleaned.includes("e-waste") ||
+    cleaned.includes("electronic") ||
+    cleaned.includes("e waste")
+  ) {
+    return "ewaste";
   }
 
   if (
@@ -97,7 +118,7 @@ export function normalizeMaterialCategory(raw: string): MaterialCategory {
 /**
  * Backwards-compatible export mapping directly to the 4 core AI categories.
  */
-export function normalizeAiCategory(raw: string): "plastic" | "metal" | "paper" | "general" {
+export function normalizeAiCategory(raw: string): MaterialCategory {
   const cat = normalizeMaterialCategory(raw);
   if (cat === "organic") {
     // When strictly constraining to the 4 AI classes, organic is flagged separately

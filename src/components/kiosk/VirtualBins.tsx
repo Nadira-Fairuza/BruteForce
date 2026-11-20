@@ -11,7 +11,15 @@ interface VirtualBinsProps {
   lastEcoPoints?: number | null;
 }
 
-const BIN_ORDER: TrashMaterial[] = ["plastic", "metal", "paper", "organic", "general"];
+const BIN_ORDER: TrashMaterial[] = [
+  "plastic",
+  "metal",
+  "paper",
+  "organic",
+  "glass",
+  "ewaste",
+  "general",
+];
 
 const BIN_ACCENTS: Record<
   TrashMaterial,
@@ -37,6 +45,16 @@ const BIN_ACCENTS: Record<
     badge: "bg-orange-500/20 text-orange-300",
     glow: "ring-2 ring-orange-400 bg-orange-950/40",
   },
+  glass: {
+    border: "border-cyan-500/60",
+    badge: "bg-cyan-500/20 text-cyan-300",
+    glow: "ring-2 ring-cyan-400 bg-cyan-950/40",
+  },
+  ewaste: {
+    border: "border-violet-500/60",
+    badge: "bg-violet-500/20 text-violet-300",
+    glow: "ring-2 ring-violet-400 bg-violet-950/40",
+  },
   general: {
     border: "border-slate-600/60",
     badge: "bg-slate-700/60 text-slate-300",
@@ -57,7 +75,7 @@ export default function VirtualBins({
           <div>
             <h2 className="text-base font-semibold">Automatic Sorting Chutes</h2>
             <p className="text-[11px] text-slate-400">
-              5-Stream Automated Waste Routing
+              7-Stream Automated Waste Routing
             </p>
           </div>
         </div>
@@ -69,7 +87,7 @@ export default function VirtualBins({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
         {BIN_ORDER.map((material) => {
           const rule = MATERIAL_RULES[material];
           const accent = BIN_ACCENTS[material];
