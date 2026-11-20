@@ -13,8 +13,16 @@ export interface ScanDetectionResult {
 }
 
 interface WebcamScannerProps {
-  onDetected: (result: ScanDetectionResult) => void;
+  cardId?: string;
+  kioskLocation?: string;
   disabled?: boolean;
+  onScanCompleted?: (payload: {
+    materialType: TrashMaterial;
+    rawLabel: string;
+    confidenceScore: number;
+    rewardEarnedBdt: number;
+    binName?: string;
+  }) => void;
 }
 
 interface TeachableMachineMetadata {
@@ -22,8 +30,10 @@ interface TeachableMachineMetadata {
 }
 
 export default function WebcamScanner({
-  onDetected,
+  cardId = "",
+  kioskLocation = "Dhanmondi 27, Dhaka",
   disabled = false,
+  onScanCompleted,
 }: WebcamScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -38,6 +48,7 @@ export default function WebcamScanner({
     confidence: number;
   } | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
 
   // Load Teachable Machine model from /model/model.json if present
   useEffect(() => {
@@ -61,7 +72,6 @@ export default function WebcamScanner({
           setModelLoaded(true);
         }
       } catch {
-        // Model files not placed in public/model/ yet — simulation fallback remains ready
         if (active) {
           setModelLoaded(false);
         }
@@ -79,7 +89,6 @@ export default function WebcamScanner({
     };
   }, []);
 
-  // Start webcam stream
   useEffect(() => {
     let mounted = true;
 
@@ -127,12 +136,17 @@ export default function WebcamScanner({
     }
 
     const inputShape = modelRef.current.inputs?.[0]?.shape;
-    const targetHeight = typeof inputShape?.[1] === "number" ? inputShape[1] : 224;
-    const targetWidth = typeof inputShape?.[2] === "number" ? inputShape[2] : 224;
+    const targetHeight =
+      typeof inputShape?.[1] === "number" ? inputShape[1] : 224;
+    const targetWidth =
+      typeof inputShape?.[2] === "number" ? inputShape[2] : 224;
 
     const predictions = tf.tidy(() => {
       const imgTensor = tf.browser.fromPixels(videoRef.current!);
-      const resized = tf.image.resizeBilinear(imgTensor, [targetHeight, targetWidth]);
+      const resized = tf.image.resizeBilinear(imgTensor, [
+        targetHeight,
+        targetWidth,
+      ]);
       const normalized = resized.toFloat().div(127.5).sub(1).expandDims(0);
       const output = modelRef.current!.predict(normalized) as tf.Tensor;
       return Array.from(output.dataSync());
@@ -158,6 +172,44 @@ export default function WebcamScanner({
     };
   }
 
+  async function submitScan(detection: ScanDetectionResult) {
+    setLivePreview({
+      label: detection.rawLabel,
+      confidence: detection.confidenceScore,
+    });
+    setScanStatus(null);
+
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardId: cardId.trim() || undefined,
+          kioskLocation,
+          materialType: detection.materialType,
+          confidenceScore: detection.confidenceScore,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        const reward = Number(data.rewardEarnedBdt ?? data.transaction?.rewardEarnedBdt ?? 0);
+        setScanStatus(
+          `Logged ${detection.materialType} (+৳${reward.toFixed(2)})`
+        );
+        onScanCompleted?.({
+          ...detection,
+          rewardEarnedBdt: reward,
+          binName: data.binName,
+        });
+      } else {
+        setScanStatus(data.error || "Scan recorded locally.");
+      }
+    } catch {
+      setScanStatus("Could not reach /api/scan.");
+    }
+  }
+
   async function handleCaptureAndScan() {
     if (disabled || isScanning) return;
     setIsScanning(true);
@@ -169,30 +221,40 @@ export default function WebcamScanner({
           label: aiResult.rawLabel,
           confidence: aiResult.confidenceScore,
         });
-        onDetected(aiResult);
+        await submitScan(aiResult);
       } else {
         // Fallback demo simulation if camera is unavailable
-        handleSimulateItem("plastic", "500 ml PET Bottle (Mum)", 0.95, "pet_bottle_500ml");
+        await submitScan({
+          materialType: "plastic",
+          rawLabel: "500 ml PET Bottle (Mum)",
+          confidenceScore: 0.95,
+          subtype: "pet_bottle_500ml",
+        });
       }
     } finally {
       setIsScanning(false);
     }
   }
 
-  function handleSimulateItem(
+  async function handleSimulateItem(
     materialType: TrashMaterial,
     label: string,
     confidence: number = 0.94,
     subtype?: string
   ) {
     if (disabled || isScanning) return;
+    setIsScanning(true);
     setLivePreview({ label, confidence });
-    onDetected({
-      materialType,
-      rawLabel: label,
-      confidenceScore: confidence,
-      subtype,
-    });
+    try {
+      await submitScan({
+        materialType,
+        rawLabel: label,
+        confidenceScore: confidence,
+        subtype,
+      });
+    } finally {
+      setIsScanning(false);
+    }
   }
 
   return (
@@ -209,7 +271,9 @@ export default function WebcamScanner({
               : "bg-amber-500/20 text-amber-300"
           }`}
         >
-          {modelLoaded ? "TF.js Model Loaded" : "Roadside Demo Mode"}
+          {modelLoaded
+            ? "TF.js Model Loaded"
+            : "Demo Mode (No /model/model.json)"}
         </span>
       </div>
 
@@ -224,14 +288,12 @@ export default function WebcamScanner({
         {!cameraReady && (
           <div className="flex h-full flex-col items-center justify-center p-6 text-center text-sm text-slate-400">
             <AlertCircle className="mb-2 h-7 w-7 text-amber-400" />
-            <p>
-              {cameraError ?? "Connecting to camera sensor..."}
-            </p>
+            <p>{cameraError ?? "Starting camera feed..."}</p>
           </div>
         )}
 
         {livePreview && (
-          <div className="absolute bottom-3 left-3 rounded-lg bg-slate-950/85 px-3 py-1.5 text-xs backdrop-blur-sm">
+          <div className="absolute bottom-3 left-3 rounded-lg bg-slate-950/85 px-3 py-1.5 text-xs backdrop-blur-xs">
             <span className="font-semibold text-emerald-300">
               {livePreview.label}
             </span>{" "}
@@ -261,6 +323,10 @@ export default function WebcamScanner({
 
           <span className="text-[11px] text-slate-400">Quick Test Subtypes:</span>
         </div>
+
+        {scanStatus && (
+          <p className="text-xs font-medium text-emerald-300">{scanStatus}</p>
+        )}
 
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
           <button
@@ -339,7 +405,7 @@ export default function WebcamScanner({
             type="button"
             onClick={() => handleSimulateItem("general", "Empty Background", 0.95, "empty_background")}
             disabled={disabled || isScanning}
-            className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-rose-300 transition hover:bg-rose-900/50"
+            className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-700"
             title="Empty background rejection test"
           >
             Empty Chute (Reject)
