@@ -10,6 +10,7 @@ const MODEL_BASE_URL =
 
 export interface ScanDetectionResult {
   materialType: TrashMaterial;
+  subtype?: string;
   rawLabel: string;
   confidenceScore: number;
 }
@@ -18,6 +19,7 @@ interface WebcamScannerProps {
   cardId?: string;
   kioskLocation?: string;
   disabled?: boolean;
+  onDetected?: (result: ScanDetectionResult) => Promise<void> |void;
   onScanCompleted?: (payload: {
     materialType: TrashMaterial;
     rawLabel: string;
