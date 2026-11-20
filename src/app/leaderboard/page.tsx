@@ -1,6 +1,7 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, Trophy, Recycle, Coins, ScanLine, Wallet } from "lucide-react";
+import { connection } from "next/server";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
@@ -23,7 +24,33 @@ interface RecentScan {
   subtypeLabel?: string;
 }
 
-export default async function LeaderboardPage() {
+function LeaderboardFallback() {
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="h-16 animate-pulse border-b border-slate-800 bg-slate-900/60" />
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-20 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60"
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="h-72 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60 lg:col-span-7" />
+          <div className="h-72 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60 lg:col-span-5" />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+async function LeaderboardContent() {
+  // Defer to request time: the leaderboard must reflect live data, not a
+  // snapshot taken when the deployment was built.
+  await connection();
+
   let topUsers: LeaderboardUser[] = [];
   let recentScans: RecentScan[] = [];
   let dbConnected = true;
@@ -244,5 +271,13 @@ export default async function LeaderboardPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LeaderboardPage() {
+  return (
+    <Suspense fallback={<LeaderboardFallback />}>
+      <LeaderboardContent />
+    </Suspense>
   );
 }
