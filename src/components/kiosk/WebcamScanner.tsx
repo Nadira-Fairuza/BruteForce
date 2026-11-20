@@ -2,14 +2,16 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
-import { Camera, AlertCircle, RefreshCw } from "lucide-react";
+import { Camera, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 import { normalizeMaterial, TrashMaterial } from "@/lib/rewards";
+
+const MODEL_BASE_URL =
+  "https://teachablemachine.withgoogle.com/models/qIXgnu5EB";
 
 export interface ScanDetectionResult {
   materialType: TrashMaterial;
   rawLabel: string;
   confidenceScore: number;
-  subtype?: string;
 }
 
 interface WebcamScannerProps {
@@ -50,23 +52,32 @@ export default function WebcamScanner({
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
 
-  // Load Teachable Machine model from /model/model.json if present
   useEffect(() => {
     let active = true;
+
+    async function loadFromBase(baseUrl: string) {
+      const metadataRes = await fetch(`${baseUrl}/metadata.json`);
+      if (metadataRes.ok) {
+        const meta = (await metadataRes.json()) as TeachableMachineMetadata;
+        if (Array.isArray(meta.labels) && meta.labels.length > 0) {
+          labelsRef.current = meta.labels;
+        }
+      }
+      return tf.loadLayersModel(`${baseUrl}/model.json`);
+    }
 
     async function loadModel() {
       try {
         await tf.ready();
 
-        const metadataRes = await fetch("/model/metadata.json");
-        if (metadataRes.ok) {
-          const meta = (await metadataRes.json()) as TeachableMachineMetadata;
-          if (Array.isArray(meta.labels) && meta.labels.length > 0) {
-            labelsRef.current = meta.labels;
-          }
+        let loadedModel: tf.LayersModel;
+        try {
+          loadedModel = await loadFromBase(MODEL_BASE_URL);
+        } catch {
+          // Fallback to local public/model/ if offline
+          loadedModel = await loadFromBase("/model");
         }
 
-        const loadedModel = await tf.loadLayersModel("/model/model.json");
         if (active) {
           modelRef.current = loadedModel;
           setModelLoaded(true);
@@ -114,7 +125,7 @@ export default function WebcamScanner({
       } catch {
         if (mounted) {
           setCameraError(
-            "Camera access unavailable. You can still test using the quick item buttons below."
+            "Camera access unavailable. You can still test using the quick material buttons below."
           );
         }
       }
@@ -193,7 +204,9 @@ export default function WebcamScanner({
 
       const data = await res.json();
       if (res.ok && data.ok) {
-        const reward = Number(data.rewardEarnedBdt ?? data.transaction?.rewardEarnedBdt ?? 0);
+        const reward = Number(
+          data.rewardEarnedBdt ?? data.transaction?.rewardEarnedBdt ?? 0
+        );
         setScanStatus(
           `Logged ${detection.materialType} (+৳${reward.toFixed(2)})`
         );
@@ -216,41 +229,25 @@ export default function WebcamScanner({
 
     try {
       const aiResult = await runInferenceFromVideo();
-      if (aiResult) {
-        setLivePreview({
-          label: aiResult.rawLabel,
-          confidence: aiResult.confidenceScore,
-        });
-        await submitScan(aiResult);
-      } else {
-        // Fallback demo simulation if camera is unavailable
-        await submitScan({
-          materialType: "plastic",
-          rawLabel: "500 ml PET Bottle (Mum)",
-          confidenceScore: 0.95,
-          subtype: "pet_bottle_500ml",
-        });
-      }
+      const detection: ScanDetectionResult = aiResult ?? {
+        materialType: "plastic",
+        rawLabel: "plastic item (demo)",
+        confidenceScore: 0.94,
+      };
+      await submitScan(detection);
     } finally {
       setIsScanning(false);
     }
   }
 
-  async function handleSimulateItem(
-    materialType: TrashMaterial,
-    label: string,
-    confidence: number = 0.94,
-    subtype?: string
-  ) {
+  async function handleSimulateMaterial(materialType: TrashMaterial) {
     if (disabled || isScanning) return;
     setIsScanning(true);
-    setLivePreview({ label, confidence });
     try {
       await submitScan({
         materialType,
-        rawLabel: label,
-        confidenceScore: confidence,
-        subtype,
+        rawLabel: `${materialType} item (demo)`,
+        confidenceScore: 0.94,
       });
     } finally {
       setIsScanning(false);
@@ -262,7 +259,7 @@ export default function WebcamScanner({
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Camera className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-base font-semibold">AI Chute Optical Scanner</h2>
+          <h2 className="text-base font-semibold">AI Trash Vision Scanner</h2>
         </div>
         <span
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -271,9 +268,7 @@ export default function WebcamScanner({
               : "bg-amber-500/20 text-amber-300"
           }`}
         >
-          {modelLoaded
-            ? "TF.js Model Loaded"
-            : "Demo Mode (No /model/model.json)"}
+          {modelLoaded ? "TF.js Model Loaded" : "Loading Model..."}
         </span>
       </div>
 
@@ -304,122 +299,47 @@ export default function WebcamScanner({
         )}
       </div>
 
-      {/* Camera Capture and Fast Subtype Testing Buttons */}
-      <div className="mt-4 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleCaptureAndScan}
-            disabled={disabled || isScanning}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-50"
-          >
-            {isScanning ? (
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleCaptureAndScan}
+          disabled={disabled || isScanning}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isScanning ? (
+            <>
               <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Camera className="h-4 w-4" />
-            )}
-            {isScanning ? "Scanning Chute..." : "Scan from Camera"}
-          </button>
+              Analyzing Item...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Scan Trash Item
+            </>
+          )}
+        </button>
+      </div>
 
-          <span className="text-[11px] text-slate-400">Quick Test Subtypes:</span>
-        </div>
+      {scanStatus && (
+        <p className="mt-2 text-xs font-medium text-emerald-300">{scanStatus}</p>
+      )}
 
-        {scanStatus && (
-          <p className="text-xs font-medium text-emerald-300">{scanStatus}</p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("plastic", "500 ml PET Bottle (Mum)", 0.95, "pet_bottle_500ml")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-sky-500/40 bg-sky-950/40 px-2 py-1 text-xs text-sky-300 transition hover:bg-sky-900/50"
-          >
-            500ml PET (+15 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("plastic", "1 L PET Bottle (Mojo)", 0.94, "pet_bottle_1l")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-sky-500/40 bg-sky-950/40 px-2 py-1 text-xs text-sky-300 transition hover:bg-sky-900/50"
-          >
-            1L PET (+25 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("metal", "Aluminium Drink Can", 0.95, "aluminium_can")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-2 py-1 text-xs text-amber-300 transition hover:bg-amber-900/50"
-          >
-            Aluminium Can (+30 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("metal", "Tin Can (Condensed Milk)", 0.93, "tin_can")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-2 py-1 text-xs text-amber-300 transition hover:bg-amber-900/50"
-          >
-            Tin Can (+80 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("paper", "Paper Tea Cup", 0.92, "paper_cup")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2 py-1 text-xs text-emerald-300 transition hover:bg-emerald-900/50"
-          >
-            Paper Cup (+5 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("paper", "School Notebook / Khata", 0.91, "notebook")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2 py-1 text-xs text-emerald-300 transition hover:bg-emerald-900/50"
-          >
-            Notebook (+125 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("organic", "Banana / Fruit Peel", 0.95, "organic_waste")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-orange-500/40 bg-orange-950/40 px-2 py-1 text-xs text-orange-300 transition hover:bg-orange-900/50"
-          >
-            Organic Waste (+10 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("general", "General Mixed Scrap", 0.90, "general_waste")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-700"
-          >
-            General (0 Pts)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("general", "Empty Background", 0.95, "empty_background")}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-700"
-            title="Empty background rejection test"
-          >
-            Empty Chute (Reject)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSimulateItem("plastic", "Unclear Shape", 0.45)}
-            disabled={disabled || isScanning}
-            className="rounded-lg border border-purple-500/40 bg-purple-950/40 px-2 py-1 text-xs text-purple-300 transition hover:bg-purple-900/50"
-            title="Low confidence test (<60%)"
-          >
-            Low Conf (45%)
-          </button>
+      <div className="mt-3 border-t border-slate-800 pt-3">
+        <p className="mb-2 text-xs text-slate-400">Quick demo test triggers:</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["plastic", "metal", "paper", "general"] as TrashMaterial[]).map(
+            (item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => handleSimulateMaterial(item)}
+                disabled={disabled || isScanning}
+                className="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs font-medium capitalize text-slate-200 transition hover:border-emerald-500/60 hover:bg-slate-800 disabled:opacity-50"
+              >
+                Test {item}
+              </button>
+            )
+          )}
         </div>
       </div>
     </div>
